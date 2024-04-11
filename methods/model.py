@@ -40,7 +40,6 @@ class GraphModule(nn.Module):
         # self.register_parameter('beta1', nn.Parameter(torch.randn(emb_dim, h_dim_list[1]), requires_grad=True))
         # self.register_parameter('beta2', nn.Parameter(torch.randn(emb_dim, h_dim_list[2]), requires_grad=True))
         # self.register_parameter('beta3', nn.Parameter(torch.randn(emb_dim, h_dim_list[3]), requires_grad=True))
-
         # A = torch.cat([self.alpha0, self.alpha1], 0)
         # A_cal = torch.mm(A, A.t())
         # norm
@@ -55,13 +54,14 @@ class GraphModule(nn.Module):
 
     def forward(self, l, is_infer):
         if is_infer:
+            
             if l == 0:
                 A = torch.cat([self.alpha0, self.alpha1], 0)
             elif l == 1:
                 A = torch.cat([self.alpha1, self.alpha2], 0)
             else:
                 A = torch.cat([self.alpha2, self.alpha3], 0)
-
+            '''
             A_cal = torch.mm(A, A.t())
             # norm
             len_A = torch.sqrt(torch.sum(A * A, dim=1, keepdim=True))
@@ -69,8 +69,17 @@ class GraphModule(nn.Module):
             A_cal = A_cal / A_norm
             A_cal[torch.arange(A.size(0)), torch.arange(A.size(0))] = 1
             A = F.softmax(F.relu(A_cal), dim=-1)
+            '''
+            ''' GWT '''
+            len_A = torch.sqrt(torch.sum(A * A, dim=1, keepdim=True))
+            A_norm = torch.mm(len_A, len_A.t())
+            A_c = A.mean(0).unsqueeze(0)
+            k_atten = F.sotmax(A_c,A.t())/A_norm
+            q_atten = F.softmax(A, A_c,t())/A_norm
+            A= q_atten@k_atten
             return A
         else:
+            '''
             if l == 3:
                 W_zu = None
                 W_hu = F.softmax(torch.matmul(self.alpha3, self.beta2), dim=-1)
@@ -83,6 +92,22 @@ class GraphModule(nn.Module):
             else:
                 W_zu = F.softmax(torch.matmul(self.alpha1, self.alpha0.t()), dim=0)
                 W_hu = F.softmax(torch.matmul(self.alpha0, self.beta0), dim=-1)
+            '''
+
+            ''' GWT '''
+            if l == 3:
+                W_zu = None
+                E_c =self.alpha3.mean(0)+self.beta2.mean(0)
+                E_c = E_c.unsqueeze(0)/2
+                k_atten = F.softmax(torch.matmul(E_c, self.beta2), dim =-1)
+                q_atten = F.softmax(torch.matmul(self.alpha3, E_c.t()), dim= -1)
+                W_hu = q_atten@k_atten
+            elif l == 2:
+              
+            elif l == 1:
+               
+            else:
+              
             return W_hu, W_zu
 
 
